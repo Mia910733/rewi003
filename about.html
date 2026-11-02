@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDGs 性別平權-情境題</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            overflow: hidden;
+            background-color: #87CEEB;
+        }
+
+        /* 遊戲背景設定 */
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            background-image: url('amusement_park.jpg'); 
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+
+        /* 頂部 UI 介面 */
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            display: flex;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #title {
+            font-size: 32px;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            margin: 0;
+        }
+
+        #score-board {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ffffff;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+
+        /* 遊戲開始與說明遮罩 */
+        #start-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .instruction-box {
+            background: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            max-width: 800px;
+            width: 90%;
+            line-height: 1.6;
+        }
+
+        .instruction-box h2 {
+            text-align: center;
+            font-size: 32px;
+            margin-top: 0;
+            color: #333;
+            border-bottom: 2px solid #ccc;
+            padding-bottom: 15px;
+        }
+
+        .instruction-box p {
+            font-size: 20px;
+            color: #444;
+            margin: 10px 0;
+        }
+        
+        .instruction-box .highlight {
+            color: #d32f2f;
+            font-weight: bold;
+        }
+
+        .start-btn-container {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .start-btn {
+            padding: 15px 50px;
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            background-color: #ff9800;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: 0.2s;
+        }
+        .start-btn:hover { transform: scale(1.05); background-color: #e68a00; }
+
+        /* 花朵圖示設定 */
+        .flower-item {
+            position: absolute;
+            width: 80px;
+            cursor: pointer;
+            transition: transform 0.2s, filter 0.2s;
+            z-index: 5;
+            animation: bounce 2s infinite alternate;
+        }
+
+        .flower-item:hover {
+            transform: scale(1.2);
+            filter: brightness(1.2);
+            animation: none;
+        }
+
+        @keyframes bounce {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-15px); }
+        }
+
+        /* 彈窗背景與共用設定 */
+        .modal-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+
+        .modal {
+            background: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            text-align: center;
+            width: 85%;
+            max-width: 800px;
+        }
+
+        /* 拖曳遊戲區塊設計 */
+        .drag-game-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .statements-pool {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            min-height: 80px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            border: 2px dashed #bbb;
+        }
+
+        .draggable-item {
+            background-color: #fff;
+            border: 2px solid #3498db;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: grab;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            user-select: none;
+            font-size: 18px;
+        }
+        .draggable-item:active { cursor: grabbing; }
+
+        .drop-zones {
+            display: flex;
+            justify-content: space-around;
+            gap: 20px;
+        }
+
+        .drop-zone {
+            flex: 1;
+            background-color: #fafafa;
+            border: 3px dashed #888;
+            border-radius: 10px;
+            min-height: 180px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            transition: background-color 0.2s;
+        }
+
+        .drop-zone.dragover {
+            background-color: #e0f7fa;
+            border-color: #00bcd4;
+        }
+
+        .drop-zone h3 {
+            margin-top: 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ccc;
+            width: 100%;
+            font-size: 22px;
+        }
+
+        .zone-equal h3 { color: #4CAF50; border-color: #4CAF50; }
+        .zone-unequal h3 { color: #f44336; border-color: #f44336; }
+
+        /* 一般按鈕設計 */
+        .btn {
+            padding: 12px 30px;
+            font-size: 20px;
+            font-weight: bold;
+            color: white;
+            background-color: #008CBA;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            margin-top: 20px;
+        }
+        .btn:hover { background-color: #007bb5; }
+        
+        .btn-retry { 
+            background-color: #f44336; 
+            padding: 15px 40px; 
+            font-size: 24px;
+        }
+        .btn-retry:hover { background-color: #d32f2f; }
+
+        /* 結算畫面與證書按鈕特別設定 */
+        #final-grade-text {
+            font-size: 42px;
+            font-weight: bold;
+            margin: 25px 0;
+        }
+
+        #cert-btn-container {
+            display: none;
+            background-color: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
+            margin: 20px auto 0;
+            border: 2px dashed #4CAF50;
+            max-width: 400px;
+        }
+
+        .btn-cert {
+            font-size: 28px;
+            font-weight: bold;
+            color: #ffffff;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            border: 2px solid #1B5E20;
+            border-radius: 12px;
+            padding: 15px 40px;
+            cursor: pointer;
+            box-shadow: 0 6px 10px rgba(0,0,0,0.3);
+            width: 100%;
+            transition: 0.3s;
+        }
+        
+        .btn-cert:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.4);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 背景音樂 -->
+    <audio id="bgm" loop>
+        <source src="bgm.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- 遊戲開始與說明遮罩 -->
+    <div id="start-overlay">
+        <div class="instruction-box">
+            <h2>遊戲說明</h2>
+            <p>☆ 請點選畫面中的花朵，每組花朵會搭配 1 個題組。</p>
+            <p>☆ 每個題組都有 2 個觀念，請將行為或語句拖進「性別平等 / 不平等」兩邊的框中。</p>
+            <p>☆ 全部做答結束，會得到對應的挑戰級別。</p>
+            <p>☆ 挑戰結果對應的級別：<span class="highlight">0-3 題為「再加油」、4-7 題為「進步中」、8-10 題為「平權達人」</span>。</p>
+            <p>☛ 如果等級是「再加油」、「進步中」，會出現「再次挑戰」按鈕，請重新挑戰。</p>
+            <p>☛ 如果等級是平權達人 (答對 8 題以上)，會出現「下載學習證書」按鈕，可以製作個人的過關證書喔！</p>
+            
+            <div class="start-btn-container">
+                <button class="start-btn" onclick="initGame()">開始遊戲</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 遊戲主畫面 -->
+    <div id="game-container">
+        <!-- UI 層 -->
+        <div id="ui-layer">
+            <h1 id="title">SDGs 性別平權-情境題</h1>
+            <div id="score-board">答對題數：<span id="score">0</span> / 10</div>
+        </div>
+
+        <!-- 花朵容器 -->
+        <div id="flowers-container"></div>
+    </div>
+
+    <!-- 拖曳問答彈窗 -->
+    <div id="dd-modal-overlay" class="modal-overlay">
+        <div class="modal">
+            <h2 style="font-size: 26px; color: #333; margin-top: 0;">請將下方語句拖曳至正確的分類中</h2>
+            <div class="drag-game-area">
+                <div class="statements-pool" id="statements-pool" ondrop="drop(event)" ondragover="allowDrop(event)">
+                    <!-- 動態生成 draggable items -->
+                </div>
+                <div class="drop-zones">
+                    <div class="drop-zone zone-equal" id="zone-equal" data-type="equal" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <h3>✅ 性別平等</h3>
+                    </div>
+                    <div class="drop-zone zone-unequal" id="zone-unequal" data-type="unequal" ondrop="drop(event)" ondragover="allowDrop(event)">
+                        <h3>❌ 性別不平等</h3>
+                    </div>
+                </div>
+            </div>
+            <button id="confirm-btn" class="btn" style="display:none;" onclick="checkAnswers()">確認送出</button>
+        </div>
+    </div>
+
+    <!-- 結算彈窗 (置中顯示) -->
+    <div id="result-modal-overlay" class="modal-overlay">
+        <div class="modal">
+            <h2 style="font-size: 32px; margin-top: 0;">遊戲結束</h2>
+            <p style="font-size: 24px;">你總共答對了 <span id="final-score" style="font-weight: bold; color: #e91e63;"></span> / 10 題</p>
+            <div id="final-grade-text"></div>
+            
+            <!-- 重新答題按鈕 -->
+            <button id="retry-btn" class="btn btn-retry" style="display:none;" onclick="location.reload()">再次挑戰</button>
+            
+            <!-- 下載證書區塊 (含白色突顯底色) -->
+            <div id="cert-btn-container">
+                <button id="cert-btn" class="btn-cert" onclick="location.href='certificate.html'">⭐ 下載學習證書 ⭐</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let completedSets = 0;
+        let currentFlower = null;
+        let currentSetIndex = -1;
+
+        const questionSets = [
+            [
+                { text: "家務與育兒由全家人共同分擔", type: "equal", id: "q1_1" },
+                { text: "男生流眼淚是很軟弱的表現", type: "unequal", id: "q1_2" }
+            ],
+            [
+                { text: "公司主管職位只優先考慮男性", type: "unequal", id: "q2_1" },
+                { text: "依個人專長與興趣自由選擇科系", type: "equal", id: "q2_2" }
+            ],
+            [
+                { text: "不論男女，同工就應該獲得同酬", type: "equal", id: "q3_1" },
+                { text: "女生理科通常比較差，應該選文組", type: "unequal", id: "q3_2" }
+            ],
+            [
+                { text: "尊重每個人的性別氣質與穿著打扮", type: "equal", id: "q4_1" },
+                { text: "只有女生才適合當護理師或保母", type: "unequal", id: "q4_2" }
+            ],
+            [
+                { text: "遭遇性騷擾時勇敢尋求管道申訴", type: "equal", id: "q5_1" },
+                { text: "認為被性騷擾是因為受害者穿太少", type: "unequal", id: "q5_2" }
+            ]
+        ];
+
+        const flowerImages = ['flower1.png', 'flower2.png', 'flower3.png'];
+
+        function initGame() {
+            document.getElementById('start-overlay').style.display = 'none';
+            // 播放背景音樂
+            const bgm = document.getElementById('bgm');
+            bgm.volume = 0.6;
+            bgm.play().catch(e => console.log("音樂播放失敗，請檢查檔案名稱"));
+            
+            setupFlowers();
+        }
+
+        function setupFlowers() {
+            const container = document.getElementById('flowers-container');
+            
+            for (let i = 0; i < 5; i++) {
+                let flower = document.createElement('img');
+                flower.src = flowerImages[i % flowerImages.length]; 
+                flower.className = 'flower-item';
+                
+                flower.style.top = (Math.random() * 30 + 55) + '%';
+                flower.style.left = (Math.random() * 85 + 5) + '%';
+                
+                flower.onclick = () => openDragDropModal(i, flower);
+                container.appendChild(flower);
+            }
+        }
+
+        function openDragDropModal(index, flowerElement) {
+            currentFlower = flowerElement;
+            currentSetIndex = index;
+            
+            const pool = document.getElementById('statements-pool');
+            const zoneEqual = document.getElementById('zone-equal');
+            const zoneUnequal = document.getElementById('zone-unequal');
+            const confirmBtn = document.getElementById('confirm-btn');
+            
+            pool.innerHTML = '';
+            zoneEqual.innerHTML = '<h3>✅ 性別平等</h3>';
+            zoneUnequal.innerHTML = '<h3>❌ 性別不平等</h3>';
+            confirmBtn.style.display = 'none';
+
+            let items = [...questionSets[index]];
+            items.sort(() => Math.random() - 0.5); 
+            
+            items.forEach(item => {
+                let div = document.createElement('div');
+                div.className = 'draggable-item';
+                div.innerText = item.text;
+                div.id = item.id;
+                div.setAttribute('draggable', true);
+                div.setAttribute('data-type', item.type); 
+                div.ondragstart = drag;
+                pool.appendChild(div);
+            });
+
+            document.getElementById('dd-modal-overlay').style.display = 'flex';
+        }
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+            if(ev.target.classList.contains('drop-zone')) {
+                ev.target.classList.add('dragover');
+            }
+        }
+
+        document.addEventListener('dragleave', function(ev) {
+            if(ev.target.classList.contains('drop-zone')) {
+                ev.target.classList.remove('dragover');
+            }
+        });
+
+        function drag(ev) {
+            ev.dataTransfer.setData("text", ev.target.id);
+        }
+
+        function drop(ev) {
+            ev.preventDefault();
+            let dropZones = document.querySelectorAll('.drop-zone');
+            dropZones.forEach(zone => zone.classList.remove('dragover'));
+
+            let data = ev.dataTransfer.getData("text");
+            let draggedElement = document.getElementById(data);
+            
+            let targetZone = ev.target;
+            while(targetZone && !targetZone.classList.contains('drop-zone') && !targetZone.classList.contains('statements-pool')) {
+                targetZone = targetZone.parentNode;
+            }
+
+            if(targetZone && draggedElement) {
+                targetZone.appendChild(draggedElement);
+                checkIfReadyToSubmit();
+            }
+        }
+
+        function checkIfReadyToSubmit() {
+            const pool = document.getElementById('statements-pool');
+            const confirmBtn = document.getElementById('confirm-btn');
+            if (pool.children.length === 0) {
+                confirmBtn.style.display = 'inline-block';
+            } else {
+                confirmBtn.style.display = 'none';
+            }
+        }
+
+        function checkAnswers() {
+            let correctCountInSet = 0;
+            
+            const equalItems = document.getElementById('zone-equal').querySelectorAll('.draggable-item');
+            equalItems.forEach(item => { if(item.getAttribute('data-type') === 'equal') correctCountInSet++; });
+
+            const unequalItems = document.getElementById('zone-unequal').querySelectorAll('.draggable-item');
+            unequalItems.forEach(item => { if(item.getAttribute('data-type') === 'unequal') correctCountInSet++; });
+
+            score += correctCountInSet;
+            document.getElementById('score').innerText = score;
+            
+            if(correctCountInSet === 2) {
+                alert("答得好！兩個觀念都分類正確！");
+            } else if (correctCountInSet === 1) {
+                alert("有一個觀念分類錯誤囉！");
+            } else {
+                alert("兩個觀念都分錯了，請繼續努力！");
+            }
+
+            document.getElementById('dd-modal-overlay').style.display = 'none';
+            if (currentFlower) currentFlower.style.display = 'none';
+            
+            completedSets++;
+            
+            if (completedSets === 5) {
+                showFinalResult();
+            }
+        }
+
+        function showFinalResult() {
+            const overlay = document.getElementById('result-modal-overlay');
+            const finalScoreSpan = document.getElementById('final-score');
+            const gradeText = document.getElementById('final-grade-text');
+            const retryBtn = document.getElementById('retry-btn');
+            const certBtnContainer = document.getElementById('cert-btn-container');
+
+            finalScoreSpan.innerText = score;
+
+            // 等級判定 (依據 0-3 / 4-7 / 8-10 級距設定)
+            if (score <= 3) {
+                gradeText.innerText = "等級：再加油 💪";
+                gradeText.style.color = "#795548"; 
+                retryBtn.style.display = 'inline-block';
+                certBtnContainer.style.display = 'none';
+            } else if (score >= 4 && score <= 7) {
+                gradeText.innerText = "等級：進步中 🌟";
+                gradeText.style.color = "#00bcd4"; 
+                retryBtn.style.display = 'inline-block';
+                certBtnContainer.style.display = 'none';
+            } else if (score >= 8) {
+                gradeText.innerText = "等級：平權達人 🏆";
+                gradeText.style.color = "#FFD700"; 
+                retryBtn.style.display = 'none';
+                certBtnContainer.style.display = 'block'; 
+            }
+
+            setTimeout(() => { overlay.style.display = 'flex'; }, 500);
+        }
+    </script>
+</body>
+</html>
